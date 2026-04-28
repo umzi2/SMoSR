@@ -636,7 +636,7 @@ class SMoSR(nn.Module):
         in_ch: int = 3,
         out_ch: int = 3,
         dim: int = 48,
-        scale: int = 4,
+        scale: int = 2,
         rep: bool = False,
         n_mb: int = 3,
         upsampler: SampleMods = "pixelshuffledirect",
@@ -665,14 +665,14 @@ class SMoSR(nn.Module):
         self.upsampler = UniUpsampleV4_light(
             upsampler,
             scale,
-            dim + 3 * scale * scale,
+            dim + in_ch * scale * scale,
             out_ch,
             upsampler_mid_dim,
             4,
             d_kernel,
             rep,
         )
-        self.scale = 4
+        self.scale = scale * 2
 
     def forward(self, x):
         x = F.pad(x, [2, 2, 2, 2], mode="reflect")
@@ -681,6 +681,5 @@ class SMoSR(nn.Module):
         x = self.blocks_2(x).add_(x)
         x = self.upsampler(torch.cat([short, self.end_block(x)], 1))
         _, _, h, w = x.shape
-        n = 2 * self.scale
-        x = x[:, :, n : h - n, n : w - n]
+        x = x[:, :, self.scale : h - self.scale, self.scale : w - self.scale]
         return x
